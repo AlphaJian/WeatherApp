@@ -8,6 +8,8 @@
 
 import UIKit
 import SnapKit
+import RxSwift
+import RxCocoa
 
 class WeatherViewController: UIViewController {
 
@@ -34,12 +36,19 @@ class WeatherViewController: UIViewController {
 
     private let padding = 20
 
+    private var viewModel: WeatherViewModel!
+
+    private var disposedBag = DisposeBag()
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
         self.view.backgroundColor = UIColor.white
         // Do any additional setup after loading the view.
+        viewModel = WeatherViewModel()
         setupUI()
+        bindSignal()
+
     }
 
     func setupUI() {
@@ -66,6 +75,19 @@ class WeatherViewController: UIViewController {
             make.trailing.equalTo(searchButton.snp.leading).offset(-padding)
             make.height.equalTo(30)
         }
+
+        searchButton.rx.tap.bind { [unowned self] _ in
+            let result = self.viewModel.judgeInputType(input: self.searchBar.text ?? "")
+        }.disposed(by: disposedBag)
     }
 
+    func bindSignal() {
+        viewModel.inputErrorSignal.subscribe(onNext: { [unowned self] (_) in
+            self.searchBar.text = ""
+        }).disposed(by: disposedBag)
+
+        viewModel.weatherSignal.subscribe(onNext: { [unowned self] (model) in
+            print(model)
+            }).disposed(by: disposedBag)
+    }
 }
