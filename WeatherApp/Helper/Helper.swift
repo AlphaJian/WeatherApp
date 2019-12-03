@@ -9,7 +9,7 @@
 import UIKit
 
 extension String {
-    var isNumber: Bool {
+    var isNumberic: Bool {
           return !isEmpty && rangeOfCharacter(from: CharacterSet.decimalDigits.inverted) == nil
     }
 
@@ -18,7 +18,7 @@ extension String {
     }
 
     var isNumberWithPoint: Bool {
-        return !isEmpty && range(of: "[^0-9.]", options: .regularExpression) == nil
+        return !isEmpty && range(of: "[^0-9.-]", options: .regularExpression) == nil
     }
 
     var isGPS: Bool {
