@@ -11,20 +11,26 @@ import UIKit
 struct WeatherModel: Codable {
     var wId: UInt
     var name: String?
+    var zipCode: String?
+    var searchedLat: String?
+    var searchedLon: String?
+    var coordinate: Coordinate?
+    var mainData: MainData?
 
     private enum CodingKeys: String, CodingKey {
         case wId = "id"
         case name
+        case coordinate = "coord"
+        case mainData = "main"
+        case zipCode
+        case searchedLat
+        case searchedLon
     }
 }
 
-struct Cloud: Codable {
-    var all: Int?
-}
-
 struct Coordinate: Codable {
-    var latitude: String?
-    var lontitude: String?
+    var latitude: Float?
+    var lontitude: Float?
 
     private enum CodingKeys: String, CodingKey {
         case latitude = "lat"
@@ -35,9 +41,9 @@ struct Coordinate: Codable {
 struct MainData: Codable {
     var humidity: Float?
     var pressure: Float?
-    var temperature: String?
-    var tempMax: String?
-    var tempMin: String?
+    var temperature: Float?
+    var tempMax: Float?
+    var tempMin: Float?
 
     private enum CodingKeys: String, CodingKey {
         case humidity
@@ -45,13 +51,5 @@ struct MainData: Codable {
         case temperature = "temp"
         case tempMax = "temp_max"
         case tempMin = "temp_min"
-    }
-}
-
-struct Weather: Codable {
-    var desc: String?
-
-    private enum CodingKeys: String, CodingKey {
-        case desc = "description"
     }
 }

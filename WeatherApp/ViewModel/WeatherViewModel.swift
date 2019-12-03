@@ -23,22 +23,39 @@ enum ErrorInfo: Error {
     case networkError
 }
 
-class WeatherViewModel {
+let tableName = "WeatherResult"
+
+class WeatherViewModel: NSObject {
 
     public var inputErrorSignal = PublishSubject<Void>()
 
     public var weatherSignal = PublishSubject<WeatherModel>()
 
+    private var dbManager: SQLiteManager!
+
+    private var weatherResult: WeatherResult!
+
+    public var resultArr: [WeatherResult] = [WeatherResult]()
+
+    override init() {
+        super.init()
+        dbManager = SQLiteManager(delegate: self)
+        dbManager.loadDB()
+    }
+
     func judgeInputType(input: String?) -> Observable<InputType> {
         guard let input = input, !input.isEmpty else {
             return Observable<InputType>.just(.empty)
         }
-        if input.isNumber, let code = UInt(input) {
+        if input.isNumberic, let code = UInt(input) {
+            weatherResult = WeatherResult(resultId: UUID().uuidString, result: input)
             return Observable<InputType>.just(.zipcode(code))
         } else if input.isAlphabetic {
+            weatherResult = WeatherResult(resultId: UUID().uuidString, result: input)
             return Observable<InputType>.just(.city(input))
         } else if input.isGPS {
             let arr = input.components(separatedBy: ",")
+            weatherResult = WeatherResult(resultId: UUID().uuidString, result: input)
             return Observable<InputType>.just(.gps(arr[0], arr[1]))
         } else {
             return Observable<InputType>.just(.unkown)
@@ -73,5 +90,34 @@ class WeatherViewModel {
             return Observable<Result<WeatherModel, ErrorInfo>>.just(.failure(err))
         }
 
+    }
+
+    func insertResult() {
+        dbManager.insert(table: tableName, data: weatherResult.parseSelfToDic())
+    }
+
+    func deleteResult(model: WeatherResult) {
+        dbManager.delete(table: tableName, data: model.parseSelfToDic())
+    }
+
+    func findResult(input: String) -> Observable<Void> {
+        resultArr.removeAll()
+        let results = dbManager.loadMatch(table: tableName, match: "result like '%\(input)%'", value: [input])
+        resultArr =  results.compactMap { WeatherResult(resultId: $0["resultid"] as! String, result: $0["result"] as? String) }
+        return Observable<Void>.just(())
+    }
+}
+
+extension WeatherViewModel: SQLDelegate {
+    var sqlSyntaxs: [String] {
+        return []
+    }
+
+    var dbPathName: String {
+        return "/WeatherResult.db"
+    }
+
+    func tablePrimaryKey(table: String) -> String {
+        return "resultId"
     }
 }
