@@ -33,7 +33,7 @@ enum Services {
     }
 
     func data() -> Observable<Data> {
-        return requestData(requestMeta.method, URL(string: requestMeta.path)!).flatMap { (response) -> Observable<Data> in
+        return requestData(requestMeta.method, URL(string: baseUrl + requestMeta.path)!).flatMap { (response) -> Observable<Data> in
             return Observable.just(response.1)
         }
     }

@@ -76,9 +76,34 @@ class WeatherViewController: UIViewController {
             make.height.equalTo(30)
         }
 
-        searchButton.rx.tap.bind { [unowned self] _ in
-            let result = self.viewModel.judgeInputType(input: self.searchBar.text ?? "")
-        }.disposed(by: disposedBag)
+        searchButton.rx.tap.flatMap { [unowned self] (_) -> Observable<InputType> in
+            return self.viewModel.judgeInputType(input: self.searchBar.text)
+        }.flatMap { [unowned self] (input) -> Observable<Result<Data, ErrorInfo>> in
+            return self.viewModel.reqeustWeatherBy(input: input)
+        }.flatMap { [unowned self] (result) -> Observable<Result<WeatherModel, ErrorInfo>> in
+            return self.viewModel.parseWeatherByData(result: result)
+        }.subscribeOn(MainScheduler.instance).subscribe(onNext: { (result) in
+            switch result {
+            case .success(let model):
+                print(model)
+            case .failure(let err):
+                switch err {
+                case .inputError(let type):
+                    switch type {
+                    case .empty:
+                        print("input can not be empty")
+                    case .unkown:
+                        print("input can not be recognized")
+                    default:
+                        break
+                    }
+                case .parseError(let err):
+                    print("error: \(err.localizedDescription)")
+                default:
+                    print("error: unknown")
+                }
+            }
+            }).disposed(by: disposedBag)
     }
 
     func bindSignal() {

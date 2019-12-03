@@ -13,11 +13,12 @@ enum InputType {
     case city(String)
     case zipcode(UInt)
     case gps(String, String)
+    case empty
     case unkown
 }
 
 enum ErrorInfo: Error {
-    case inputError
+    case inputError(InputType)
     case parseError(Error)
     case networkError
 }
@@ -28,50 +29,49 @@ class WeatherViewModel {
 
     public var weatherSignal = PublishSubject<WeatherModel>()
 
-    func judgeInputType(input: String) -> InputType {
+    func judgeInputType(input: String?) -> Observable<InputType> {
+        guard let input = input, !input.isEmpty else {
+            return Observable<InputType>.just(.empty)
+        }
         if input.isNumber, let code = UInt(input) {
-            return .zipcode(code)
+            return Observable<InputType>.just(.zipcode(code))
         } else if input.isAlphabetic {
-            return .city(input)
+            return Observable<InputType>.just(.city(input))
         } else if input.isGPS {
             let arr = input.components(separatedBy: ",")
-            return .gps(arr[0], arr[1])
+            return Observable<InputType>.just(.gps(arr[0], arr[1]))
         } else {
-            return .unkown
+            return Observable<InputType>.just(.unkown)
         }
     }
 
-    func reqeustWeatherBy(input: InputType) -> Observable<WeatherModel> {
+    func reqeustWeatherBy(input: InputType) -> Observable<Result<Data, ErrorInfo>> {
         switch input {
         case .city(let city):
-            return Business.reqeustWeaherByCity(cityName: city).flatMap { [unowned self] (data) -> Observable<WeatherModel> in
-                do {
-                    let model = try JSONDecoder().decode(WeatherModel.self, from: data)
-                    return Observable<WeatherModel>.just(model)
-                } catch let err {
-                    throw ErrorInfo.parseError(err)
-                }
-            }
+            return Business.reqeustWeaherByCity(cityName: city).map { Result.success($0) }
         case .zipcode(let code):
-            return Business.reqeustWeaherByZipCode(zipCode: code).flatMap { [unowned self] (data) -> Observable<WeatherModel> in
-                do {
-                    let model = try JSONDecoder().decode(WeatherModel.self, from: data)
-                    return Observable<WeatherModel>.just(model)
-                } catch let err {
-                    throw ErrorInfo.parseError(err)
-                }
-
-            }
+            return Business.reqeustWeaherByZipCode(zipCode: code).map { Result.success($0) }
         case .gps(let lat, let lon):
-            return Business.reqeustWeaherByGPS(lat: lat, lon: lon).flatMap { [unowned self] (data) -> Observable<WeatherModel> in
-                do {
-                    let model = try JSONDecoder().decode(WeatherModel.self, from: data)
-                    return Observable<WeatherModel>.just(model)
-                } catch let err {
-                    throw ErrorInfo.parseError(err)
-                }}
+            return Business.reqeustWeaherByGPS(lat: lat, lon: lon).map { Result.success($0) }
+        case .empty:
+            return Observable<Result<Data, ErrorInfo>>.just(.failure(.inputError(.empty)))
         default:
-            throw ErrorInfo.inputError
+            return Observable<Result<Data, ErrorInfo>>.just(.failure(.inputError(.unkown)))
         }
+    }
+
+    func parseWeatherByData(result: Result<Data, ErrorInfo>) -> Observable<Result<WeatherModel, ErrorInfo>> {
+        switch result {
+        case .success(let data):
+            do {
+                let model = try JSONDecoder().decode(WeatherModel.self, from: data)
+                return Observable<Result<WeatherModel, ErrorInfo>>.just(.success(model))
+            } catch let err {
+                return Observable<Result<WeatherModel, ErrorInfo>>.just(.failure(.parseError(err)))
+            }
+        case .failure(let err):
+            return Observable<Result<WeatherModel, ErrorInfo>>.just(.failure(err))
+        }
+
     }
 }
