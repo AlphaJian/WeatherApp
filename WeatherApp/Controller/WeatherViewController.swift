@@ -16,7 +16,8 @@ class WeatherViewController: UIViewController {
 
     private lazy var tipLabel: UILabel = {
         let lbl = UILabel(frame: CGRect.zero)
-        lbl.text = "Please input city name or zip code or GPS"
+        lbl.text = "Please input city name or zip code or GPS\nGPS should input as \"123.123,-32.23\""
+        lbl.numberOfLines = 2
         return lbl
     }()
 
@@ -43,6 +44,8 @@ class WeatherViewController: UIViewController {
 
         return tb
     }()
+    
+    private lazy var weatherView: WeatherView = WeatherView(frame: CGRect.zero)
 
     private let padding = 20
 
@@ -65,7 +68,7 @@ class WeatherViewController: UIViewController {
             make.top.equalToSuperview().offset(100)
             make.leading.equalToSuperview().offset(padding)
             make.trailing.equalToSuperview().offset(-padding)
-            make.height.equalTo(25)
+            make.height.equalTo(50)
         }
 
         view.addSubview(searchButton)
@@ -89,6 +92,13 @@ class WeatherViewController: UIViewController {
             make.leading.bottom.trailing.equalToSuperview()
             make.top.equalTo(searchBar.snp.bottom).offset(5)
         }
+        
+        view.addSubview(weatherView)
+        weatherView.snp.makeConstraints { (make) in
+            make.edges.equalTo(tableview)
+        }
+        weatherView.isHidden = true
+        
 
         searchButton.rx.tap.flatMap { [unowned self] (_) -> Observable<InputType> in
             self.view.makeToastActivity(.center)
@@ -103,6 +113,8 @@ class WeatherViewController: UIViewController {
             case .success(let model):
                 print(model)
                 self.viewModel.insertResult()
+                self.weatherView.isHidden = false
+                self.weatherView.setModel(model: model)
             case .failure(let err):
                 switch err {
                 case .inputError(let type):
@@ -117,7 +129,7 @@ class WeatherViewController: UIViewController {
                     }
                 case .parseError(let err):
                     print("error: \(err.localizedDescription)")
-                    self.view.makeToast("Input can not be recognized")
+                    self.view.makeToast("City can not be found")
                 default:
                     self.view.makeToast("Unknown error occurs")
                 }
@@ -125,6 +137,7 @@ class WeatherViewController: UIViewController {
             }).disposed(by: disposedBag)
 
         searchBar.rx.text.orEmpty.asObservable().flatMapLatest { [unowned self] (text) -> Observable<Void> in
+            self.weatherView.isHidden = true
             return self.viewModel.findResult(input: text)
         }.subscribeOn(MainScheduler.instance).subscribe(onNext: {  [unowned self] (_) in
             self.tableview.reloadData()
@@ -142,6 +155,12 @@ extension WeatherViewController: UITableViewDelegate, UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
         cell.textLabel?.text = viewModel.resultArr[indexPath.row].result
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let input = viewModel.resultArr[indexPath.row].result
+        searchBar.text = input
+        searchButton.sendActions(for: .touchUpInside)
     }
 
     func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {

@@ -93,7 +93,10 @@ class WeatherViewModel: NSObject {
     }
 
     func insertResult() {
-        dbManager.insert(table: tableName, data: weatherResult.parseSelfToDic())
+        let result = dbManager.loadMatch(table: tableName, match: "result like '%\(weatherResult.result ?? "")%'", value: [weatherResult.result ?? ""])
+        if result.isEmpty {
+            dbManager.insert(table: tableName, data: weatherResult.parseSelfToDic())
+        }
     }
 
     func deleteResult(model: WeatherResult) {

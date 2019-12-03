@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02EB9F7A23969EE300BE8708 /* WeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EB9F7923969EE300BE8708 /* WeatherView.swift */; };
+		02EB9F7C2396ACE100BE8708 /* WeatherViewModelTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EB9F7B2396ACE100BE8708 /* WeatherViewModelTest.swift */; };
 		5C2A310171AD247B34F315AF /* Pods_WeatherApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 605389469AB4EC59F71BF0E2 /* Pods_WeatherApp.framework */; };
 		C0D7D86B2390AF7600BAAEC6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D7D86A2390AF7600BAAEC6 /* AppDelegate.swift */; };
 		C0D7D8742390AF7800BAAEC6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C0D7D8732390AF7800BAAEC6 /* Assets.xcassets */; };
@@ -36,6 +38,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		02EB9F7923969EE300BE8708 /* WeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherView.swift; sourceTree = "<group>"; };
+		02EB9F7B2396ACE100BE8708 /* WeatherViewModelTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WeatherViewModelTest.swift; path = WeatherApp/View/WeatherViewModelTest.swift; sourceTree = SOURCE_ROOT; };
 		605389469AB4EC59F71BF0E2 /* Pods_WeatherApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_WeatherApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0D7D8672390AF7600BAAEC6 /* WeatherApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WeatherApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0D7D86A2390AF7600BAAEC6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -79,6 +83,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		02EB9F7823969ED000BE8708 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				02EB9F7923969EE300BE8708 /* WeatherView.swift */,
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
 		1B676B4085E348B689C7BB90 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -119,11 +131,11 @@
 		C0D7D8692390AF7600BAAEC6 /* WeatherApp */ = {
 			isa = PBXGroup;
 			children = (
+				02EB9F7823969ED000BE8708 /* View */,
 				C0D7D86A2390AF7600BAAEC6 /* AppDelegate.swift */,
 				C0EA9C5D239642AA0035DAAF /* Controller */,
 				C0EA9C60239642AA0035DAAF /* Helper */,
 				C0EA9C5F239642AA0035DAAF /* Model */,
-				C0EA9C64239642AA0035DAAF /* View */,
 				C0EA9C5A239642AA0035DAAF /* ViewModel */,
 				C0D7D8732390AF7800BAAEC6 /* Assets.xcassets */,
 				C0D7D8752390AF7800BAAEC6 /* LaunchScreen.storyboard */,
@@ -181,13 +193,6 @@
 			path = Helper;
 			sourceTree = "<group>";
 		};
-		C0EA9C64239642AA0035DAAF /* View */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = View;
-			sourceTree = "<group>";
-		};
 		C0EA9C7623965D1C0035DAAF /* json */ = {
 			isa = PBXGroup;
 			children = (
@@ -207,6 +212,7 @@
 		C0EA9C7A23965D520035DAAF /* ViewModel */ = {
 			isa = PBXGroup;
 			children = (
+				02EB9F7B2396ACE100BE8708 /* WeatherViewModelTest.swift */,
 			);
 			path = ViewModel;
 			sourceTree = "<group>";
@@ -371,6 +377,7 @@
 				C0EA9C6C239642D40035DAAF /* WeatherModel.swift in Sources */,
 				C0D7D86B2390AF7600BAAEC6 /* AppDelegate.swift in Sources */,
 				C0EA9C6E239642DE0035DAAF /* WeatherResult.swift in Sources */,
+				02EB9F7A23969EE300BE8708 /* WeatherView.swift in Sources */,
 				C0EA9C67239642AA0035DAAF /* WeatherViewController.swift in Sources */,
 				C0EA9C65239642AA0035DAAF /* WeatherViewModel.swift in Sources */,
 			);
@@ -381,6 +388,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C0EA9C7F23965FA60035DAAF /* WeatherModelTest.swift in Sources */,
+				02EB9F7C2396ACE100BE8708 /* WeatherViewModelTest.swift in Sources */,
 				C0EA9C7D23965D920035DAAF /* UtilityTest.swift in Sources */,
 				C0D7D8822390AF7800BAAEC6 /* WeatherAppTests.swift in Sources */,
 			);
