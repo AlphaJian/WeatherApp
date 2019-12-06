@@ -12,17 +12,31 @@ import RxSwift
 import RxCocoa
 import Toast_Swift
 
-class WeatherViewController: UIViewController {
+class WeatherViewController: BaseViewController {
 
     private lazy var tipLabel: UILabel = {
         let lbl = UILabel(frame: CGRect.zero)
-        lbl.text = "Please input city name or zip code or GPS"
+        lbl.text = "Please select input type"
         return lbl
+    }()
+
+    private lazy var typeButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("City", for: .normal)
+
+        return btn
+    }()
+
+    private lazy var recentButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Recent Search", for: .normal)
+
+        return btn
     }()
 
     private lazy var searchBar: UITextField = {
         let bar = UITextField(frame: CGRect.zero)
-        bar.placeholder = "city name or zip code or GPS"
+        bar.placeholder = "city name or zip code"
         bar.backgroundColor = UIColor.gray
         bar.textColor = UIColor.black
         return bar
@@ -49,22 +63,41 @@ class WeatherViewController: UIViewController {
     private var viewModel: WeatherViewModel!
 
     private var disposedBag = DisposeBag()
+    private var gpsTriggerSignal = PublishSubject<Void>()
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        self.view.backgroundColor = UIColor.white
+        self.title = "Weather"
         // Do any additional setup after loading the view.
         viewModel = WeatherViewModel()
         setupUI()
+        setupLocation()
+        loadMostRecent()
     }
 
     func setupUI() {
+        view.addSubview(typeButton)
+        typeButton.snp.makeConstraints { (make) in
+            make.top.equalToSuperview().offset(100)
+            make.trailing.equalToSuperview().offset(-padding)
+            make.width.equalTo(100)
+            make.height.equalTo(25)
+        }
+
         view.addSubview(tipLabel)
         tipLabel.snp.makeConstraints { (make) in
             make.top.equalToSuperview().offset(100)
             make.leading.equalToSuperview().offset(padding)
-            make.trailing.equalToSuperview().offset(-padding)
+            make.trailing.equalTo(typeButton).offset(-padding)
+            make.height.equalTo(25)
+        }
+
+        view.addSubview(recentButton)
+        recentButton.snp.makeConstraints { (make) in
+            make.bottom.equalToSuperview().offset(-padding)
+            make.leading.equalToSuperview().offset(padding)
+            make.trailing.equalTo(typeButton).offset(-padding)
             make.height.equalTo(25)
         }
 
@@ -86,9 +119,19 @@ class WeatherViewController: UIViewController {
 
         view.addSubview(tableview)
         tableview.snp.makeConstraints { (make) in
-            make.leading.bottom.trailing.equalToSuperview()
+            make.leading.trailing.equalToSuperview()
             make.top.equalTo(searchBar.snp.bottom).offset(5)
+            make.bottom.equalTo(recentButton.snp.top).offset(-padding)
         }
+
+        typeButton.rx.tap.bind { [unowned self] in
+            self.searchBar.resignFirstResponder()
+            self.showActionAlert()
+        }.disposed(by: disposedBag)
+
+        recentButton.rx.tap.bind { [unowned self] in
+            self.navigationController?.pushViewController(RecentViewController(), animated: true)
+        }.disposed(by: disposedBag)
 
         searchButton.rx.tap.flatMap { [unowned self] (_) -> Observable<InputType> in
             self.view.makeToastActivity(.center)
@@ -102,7 +145,7 @@ class WeatherViewController: UIViewController {
             switch result {
             case .success(let model):
                 print(model)
-                self.viewModel.insertResult()
+                self.viewModel.upsertResult(input: self.searchBar.text ?? "")
             case .failure(let err):
                 switch err {
                 case .inputError(let type):
@@ -122,39 +165,67 @@ class WeatherViewController: UIViewController {
                     self.view.makeToast("Unknown error occurs")
                 }
             }
-            }).disposed(by: disposedBag)
+        }).disposed(by: disposedBag)
 
         searchBar.rx.text.orEmpty.asObservable().flatMapLatest { [unowned self] (text) -> Observable<Void> in
-            return self.viewModel.findResult(input: text)
+            return self.viewModel.findResults(input: text)
         }.subscribeOn(MainScheduler.instance).subscribe(onNext: {  [unowned self] (_) in
             self.tableview.reloadData()
-            }).disposed(by: disposedBag)
+        }).disposed(by: disposedBag)
+    }
+
+    func loadMostRecent() {
+        viewModel.findMostResult().subscribe(onNext: { [unowned self] (model) in
+            let input = model?.result ?? ""
+            self.searchBar.text = input
+            if !input.isEmpty {
+                self.searchButton.sendActions(for: .touchUpInside)
+
+            }
+        }).disposed(by: disposedBag)
+    }
+
+    func setupLocation() {
+        Observable.zip(LocationManager.shared.locationSignal, gpsTriggerSignal).subscribeOn(MainScheduler.instance).subscribe(onNext: { (signal) in
+            if !self.searchBar.isHidden {
+                self.searchBar.text = signal.0
+            }
+        }).disposed(by: disposedBag)
+    }
+
+    func showActionAlert() {
+        let alert = UIAlertController(title: "Selection", message: "", preferredStyle: .actionSheet)
+        let city = UIAlertAction(title: "City", style: .default) { [unowned self] (_) in
+            self.typeButton.setTitle("City", for: .normal)
+            self.searchBar.text = ""
+            self.searchBar.keyboardType = .default
+        }
+        let zipcode = UIAlertAction(title: "Zipcode", style: .default) { [unowned self] (_) in
+            self.typeButton.setTitle("Zipcode", for: .normal)
+            self.searchBar.text = ""
+            self.searchBar.keyboardType = .numberPad
+        }
+        let GPS = UIAlertAction(title: "GPS", style: .default) { (_) in
+            self.typeButton.setTitle("GPS", for: .normal)
+            LocationManager.shared.startPositioning()
+            self.gpsTriggerSignal.onNext(())
+        }
+        alert.addAction(city)
+        alert.addAction(zipcode)
+        alert.addAction(GPS)
+        self.present(alert, animated: true, completion: nil)
     }
 }
 
 
 extension WeatherViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return viewModel.resultArr.count
+        return viewModel.filterArr.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
-        cell.textLabel?.text = viewModel.resultArr[indexPath.row].result
+        cell.textLabel?.text = viewModel.filterArr[indexPath.row].result
         return cell
-    }
-
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            let model = viewModel.resultArr[indexPath.row]
-            viewModel.resultArr.remove(at: indexPath.row)
-            viewModel.deleteResult(model: model)
-            tableView.deleteRows(at: [indexPath], with: .fade)
-            tableView.setEditing(false, animated: true)
-        }
     }
 }
