@@ -10,4 +10,4 @@ Input city or zipcode directly, and tap "Search"
 
 For GPS, type like "123.33,989.22", the comma is necessary.
 
-**The latest verson has updated database, please delete orignal App and reinstall.**
+**The latest verson has updated database, please delete the original App and reinstall.**
