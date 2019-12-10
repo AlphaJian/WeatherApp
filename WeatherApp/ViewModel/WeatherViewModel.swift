@@ -33,14 +33,18 @@ class WeatherViewModel: NSObject {
 
     private var dbManager: SQLiteManager!
 
-    private var weatherResult: WeatherResult!
+    private var weatherSearch: String?
 
     public var resultArr: [WeatherResult] = [WeatherResult]()
+    public var filterArr: [WeatherResult] = [WeatherResult]()
 
+    public var returnBlock: ((String) -> ())?
+    
     override init() {
         super.init()
         dbManager = SQLiteManager(delegate: self)
         dbManager.loadDB()
+        findAllResult()
     }
 
     func judgeInputType(input: String?) -> Observable<InputType> {
@@ -48,14 +52,14 @@ class WeatherViewModel: NSObject {
             return Observable<InputType>.just(.empty)
         }
         if input.isNumberic, let code = UInt(input) {
-            weatherResult = WeatherResult(resultId: UUID().uuidString, result: input)
+            weatherSearch = input
             return Observable<InputType>.just(.zipcode(code))
         } else if input.isAlphabetic {
-            weatherResult = WeatherResult(resultId: UUID().uuidString, result: input)
-            return Observable<InputType>.just(.city(input))
+            weatherSearch = (input as NSString).replacingOccurrences(of: " ", with: "%20")
+            return Observable<InputType>.just(.city(weatherSearch ?? ""))
         } else if input.isGPS {
             let arr = input.components(separatedBy: ",")
-            weatherResult = WeatherResult(resultId: UUID().uuidString, result: input)
+            weatherSearch = input
             return Observable<InputType>.just(.gps(arr[0], arr[1]))
         } else {
             return Observable<InputType>.just(.unkown)
@@ -69,7 +73,7 @@ class WeatherViewModel: NSObject {
         case .zipcode(let code):
             return Business.reqeustWeaherByZipCode(zipCode: code).map { Result.success($0) }
         case .gps(let lat, let lon):
-            return Business.reqeustWeaherByGPS(lat: lat, lon: lon).map { Result.success($0) }
+                return Business.reqeustWeaherByGPS(lat: lat, lon: lon).map { Result.success($0) }
         case .empty:
             return Observable<Result<Data, ErrorInfo>>.just(.failure(.inputError(.empty)))
         default:
@@ -92,22 +96,58 @@ class WeatherViewModel: NSObject {
 
     }
 
-    func insertResult() {
-        let result = dbManager.loadMatch(table: tableName, match: "result like '%\(weatherResult.result ?? "")%'", value: [weatherResult.result ?? ""])
-        if result.isEmpty {
-            dbManager.insert(table: tableName, data: weatherResult.parseSelfToDic())
+    func upsertResult(input: String) {
+        if var model = findResult(searchText: input), let count = model.count {
+            model.count = count + 1
+            updateResult(model: model)
+        } else {
+            dbManager.insert(table: tableName, data: WeatherResult(resultId: UUID().uuidString, result: input, count: 1).parseSelfToDic())
         }
+    }
+
+    func updateResult(model: WeatherResult) {
+        dbManager.update(table: tableName, data: model.parseSelfToDic())
     }
 
     func deleteResult(model: WeatherResult) {
         dbManager.delete(table: tableName, data: model.parseSelfToDic())
     }
 
-    func findResult(input: String) -> Observable<Void> {
-        resultArr.removeAll()
+    func findResult(searchText: String) -> WeatherResult? {
+        let results = dbManager.loadMatch(table: tableName, match: "result == '\(searchText)'", value: [searchText])
+        var model = WeatherResult(resultId: "", result: nil, count: nil)
+        if !results.isEmpty {
+            model.parseDicToSelf(dic: results[0])
+            return model
+        } else {
+            return nil
+        }
+    }
+
+    func findResults(input: String) -> Observable<Int> {
+        filterArr.removeAll()
         let results = dbManager.loadMatch(table: tableName, match: "result like '%\(input)%'", value: [input])
-        resultArr =  results.compactMap { WeatherResult(resultId: $0["resultid"] as! String, result: $0["result"] as? String) }
-        return Observable<Void>.just(())
+        filterArr = results.compactMap { WeatherResult(resultId: $0["resultid"] as! String, result: $0["result"] as? String, count: $0["count"] as? Int) }
+        return Observable<Int>.just(filterArr.count)
+    }
+
+    func findAllResult() {
+        resultArr.removeAll()
+        let results = dbManager.loadMatch(table: tableName, match: "1=1", value: [])
+        resultArr =  results.compactMap { WeatherResult(resultId: $0["resultid"] as! String, result: $0["result"] as? String, count: $0["count"] as? Int) }
+    }
+
+    func findMostResult() -> Observable<WeatherResult?> {
+        let results = dbManager.loadMatch(table: tableName, match: " 1=1 order by count desc", value: [])
+        if results.isEmpty {
+            return Observable<WeatherResult?>.just(nil)
+        } else {
+            return Observable<WeatherResult?>.just(WeatherResult(resultId: results[0]["resultid"] as! String, result: results[0]["result"] as? String, count: results[0]["count"] as? Int) )
+        }
+    }
+    
+    func deleteAllResult() {
+        dbManager.deleteAll(table: tableName)
     }
 }
 

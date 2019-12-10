@@ -14,7 +14,7 @@ extension String {
     }
 
     var isAlphabetic: Bool {
-        return !isEmpty && range(of: "[^a-zA-Z]", options: .regularExpression) == nil
+        return !isEmpty && range(of: "[^a-zA-Z ]", options: .regularExpression) == nil
     }
 
     var isNumberWithPoint: Bool {
@@ -38,5 +38,56 @@ extension String {
         } else {
             return false
         }
+    }
+}
+
+extension UIApplication {
+    static var currentViewController: UIViewController? {
+        guard let rootViewController = UIApplication.shared.keyWindow?.rootViewController else {
+            return nil
+        }
+
+        return getCurrentViewController(from: rootViewController)
+    }
+
+    private static func getCurrentViewController(from viewController: UIViewController) -> UIViewController {
+        switch viewController {
+        case is UINavigationController:
+            return getCurrentViewController(from: (viewController as! UINavigationController).visibleViewController!)
+        case is UITabBarController:
+            return getCurrentViewController(from: (viewController as! UITabBarController).selectedViewController!)
+        default:
+            if let presentedViewController = viewController.presentedViewController {
+                return getCurrentViewController(from: presentedViewController)
+            } else {
+                return viewController
+            }
+        }
+    }
+}
+
+extension Double {
+
+    /// Rounds the double to decimal places value
+    func roundTo(places:Int) -> Double {
+        let divisor = pow(10.0, Double(places))
+        return (self * divisor).rounded() / divisor
+    }
+
+    var celsius: Double {
+        return (self - 273.15).roundTo(places: 2)
+    }
+
+    var fahrenheit: Double {
+        let newValue = self.celsius * 9 / 5 + 32
+        return newValue.roundTo(places: 2)
+    }
+
+    var celsiusStr: String {
+        return "\(self.celsius) ℃"
+    }
+
+    var fahrenheitStr: String {
+        return "\(self.fahrenheit) ℉"
     }
 }

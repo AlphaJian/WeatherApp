@@ -11,19 +11,22 @@ import UIKit
 struct WeatherResult {
     var resultId: String
     var result: String?
+    var count: Int?
 }
 
 extension WeatherResult {
     func parseSelfToDic() -> [String: Any] {
         return ["resultId": resultId,
-                "result": result ?? ""]
+                "result": result,
+                "count": count ?? 0]
     }
 
     mutating func parseDicToSelf(dic: [String: Any]) {
-        if let resultId = dic["resultId"] as? String {
+        if let resultId = dic["resultid"] as? String {
             self.resultId = resultId
         }
-        self.result = dic["result"] as? String
+        self.result = (dic["result"] as? String) ?? ""
+        self.count = dic["count"] as? Int
     }
 
 }

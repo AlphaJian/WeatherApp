@@ -14,8 +14,6 @@ class WeatherView: UIView {
     private lazy var temperatureLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
     private lazy var humidityLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
     private lazy var pressureLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
-    private lazy var tempMaxLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
-    private lazy var tempMinLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
     private lazy var latLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
     private lazy var lonLabel: WeatherLabel = WeatherLabel(frame: CGRect.zero)
 
@@ -38,27 +36,14 @@ class WeatherView: UIView {
         temperatureLabel.snp.makeConstraints { (make) in
             make.leading.trailing.equalTo(cityNameLabel)
             make.top.equalTo(cityNameLabel.snp.bottom).offset(padding)
-            make.height.equalTo(height)
+            make.height.equalTo(height * 2)
         }
-        
-        self.addSubview(tempMaxLabel)
-        tempMaxLabel.snp.makeConstraints { (make) in
-            make.leading.trailing.equalTo(cityNameLabel)
-            make.top.equalTo(temperatureLabel.snp.bottom).offset(padding)
-            make.height.equalTo(height)
-        }
-        
-        self.addSubview(tempMinLabel)
-        tempMinLabel.snp.makeConstraints { (make) in
-            make.leading.trailing.equalTo(cityNameLabel)
-            make.top.equalTo(tempMaxLabel.snp.bottom).offset(padding)
-            make.height.equalTo(height)
-        }
+        temperatureLabel.numberOfLines = 3
         
         self.addSubview(latLabel)
         latLabel.snp.makeConstraints { (make) in
             make.leading.trailing.equalTo(cityNameLabel)
-            make.top.equalTo(tempMinLabel.snp.bottom).offset(padding)
+            make.top.equalTo(temperatureLabel.snp.bottom).offset(padding)
             make.height.equalTo(height)
         }
         
@@ -90,13 +75,15 @@ class WeatherView: UIView {
     
     func setModel(model: WeatherModel) {
         cityNameLabel.text = "City: \(model.name ?? "")"
-        temperatureLabel.text = "Temperature: \(model.mainData?.temperature ?? 0)"
-        tempMinLabel.text = "Min_Temperature: \(model.mainData?.tempMin ?? 0)"
-        tempMaxLabel.text = "Max_Temperature: \(model.mainData?.tempMax ?? 0)"
+        if let value = model.mainData?.temperature, let minValue = model.mainData?.tempMin, let maxValue = model.mainData?.tempMax {
+            temperatureLabel.text = "Temperature: \(value.celsiusStr) / \(value.fahrenheitStr) \n Ranges: \n \(minValue.celsiusStr) ~ \(maxValue.celsiusStr) / \(minValue.fahrenheitStr) ~ \(maxValue.fahrenheitStr)"
+        } else {
+            temperatureLabel.text = "Temperature: unknown"
+        }
         latLabel.text = "Latitude: \(model.coordinate?.latitude ?? 0)"
         lonLabel.text = "Lontitude: \(model.coordinate?.lontitude ?? 0)"
-        pressureLabel.text = "Pressure: \(model.mainData?.pressure ?? 0)"
-        humidityLabel.text = "Humidity: \(model.mainData?.humidity ?? 0)"
+        pressureLabel.text = "Pressure: \(model.mainData?.pressure ?? 0) hPa"
+        humidityLabel.text = "Humidity: \(model.mainData?.humidity ?? 0) %"
     }
 }
 

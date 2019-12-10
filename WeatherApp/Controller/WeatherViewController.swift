@@ -12,18 +12,31 @@ import RxSwift
 import RxCocoa
 import Toast_Swift
 
-class WeatherViewController: UIViewController {
+class WeatherViewController: BaseViewController {
 
     private lazy var tipLabel: UILabel = {
         let lbl = UILabel(frame: CGRect.zero)
-        lbl.text = "Please input city name or zip code or GPS\nGPS should input as \"123.123,-32.23\""
-        lbl.numberOfLines = 2
+        lbl.text = "Please input city or zipcode:"
         return lbl
+    }()
+
+    private lazy var gpsButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Search by location", for: .normal)
+
+        return btn
+    }()
+
+    private lazy var recentButton: UIButton = {
+        let btn = UIButton(type: .system)
+        btn.setTitle("Recent Search", for: .normal)
+
+        return btn
     }()
 
     private lazy var searchBar: UITextField = {
         let bar = UITextField(frame: CGRect.zero)
-        bar.placeholder = "city name or zip code or GPS"
+        bar.placeholder = "city name or zip code"
         bar.backgroundColor = UIColor.gray
         bar.textColor = UIColor.black
         return bar
@@ -52,14 +65,18 @@ class WeatherViewController: UIViewController {
     private var viewModel: WeatherViewModel!
 
     private var disposedBag = DisposeBag()
+    private var gpsTriggerSignal = PublishSubject<Void>()
+    private var currentGPS: Coordinate?
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        self.view.backgroundColor = UIColor.white
+        self.title = "Weather"
         // Do any additional setup after loading the view.
         viewModel = WeatherViewModel()
         setupUI()
+        setupLocation()
+        loadMostRecent()
     }
 
     func setupUI() {
@@ -68,7 +85,15 @@ class WeatherViewController: UIViewController {
             make.top.equalToSuperview().offset(100)
             make.leading.equalToSuperview().offset(padding)
             make.trailing.equalToSuperview().offset(-padding)
-            make.height.equalTo(50)
+            make.height.equalTo(25)
+        }
+
+        view.addSubview(recentButton)
+        recentButton.snp.makeConstraints { (make) in
+            make.bottom.equalToSuperview().offset(-padding)
+            make.leading.equalToSuperview().offset(padding)
+            make.trailing.equalToSuperview().offset(-padding)
+            make.height.equalTo(25)
         }
 
         view.addSubview(searchButton)
@@ -87,10 +112,17 @@ class WeatherViewController: UIViewController {
             make.height.equalTo(30)
         }
 
+        view.addSubview(gpsButton)
+        gpsButton.snp.makeConstraints { (make) in
+            make.top.equalTo(searchBar.snp.bottom).offset(padding)
+            make.centerX.equalToSuperview()
+        }
+
         view.addSubview(tableview)
         tableview.snp.makeConstraints { (make) in
-            make.leading.bottom.trailing.equalToSuperview()
-            make.top.equalTo(searchBar.snp.bottom).offset(5)
+            make.leading.trailing.equalToSuperview()
+            make.top.equalTo(gpsButton.snp.bottom).offset(5)
+            make.bottom.equalTo(recentButton.snp.top).offset(-padding)
         }
         
         view.addSubview(weatherView)
@@ -100,9 +132,28 @@ class WeatherViewController: UIViewController {
         weatherView.isHidden = true
         
 
+        gpsButton.rx.tap.bind { [unowned self] in
+            self.searchBar.resignFirstResponder()
+            self.gpsTriggerSignal.onNext(())
+        }.disposed(by: disposedBag)
+
+        recentButton.rx.tap.bind { [unowned self] in
+            let vc = RecentViewController()
+            self.navigationController?.pushViewController(vc, animated: true)
+            vc.weatherBlock = { [unowned self] (model) in
+                self.searchRecent(input: model.result ?? "")
+            }
+        }.disposed(by: disposedBag)
+
         searchButton.rx.tap.flatMap { [unowned self] (_) -> Observable<InputType> in
             self.view.makeToastActivity(.center)
-            return self.viewModel.judgeInputType(input: self.searchBar.text)
+            self.searchBar.resignFirstResponder()
+            if let gps = self.currentGPS {
+                self.currentGPS = nil
+                return self.viewModel.judgeInputType(input: "\(gps.latitude ?? 0),\(gps.lontitude ?? 0)")
+            } else {
+                return self.viewModel.judgeInputType(input: self.searchBar.text)
+            }
         }.flatMap { [unowned self] (input) -> Observable<Result<Data, ErrorInfo>> in
             return self.viewModel.reqeustWeatherBy(input: input)
         }.flatMap { [unowned self] (result) -> Observable<Result<WeatherModel, ErrorInfo>> in
@@ -111,11 +162,11 @@ class WeatherViewController: UIViewController {
             self.view.hideToastActivity()
             switch result {
             case .success(let model):
-                print(model)
-                self.viewModel.insertResult()
-                self.weatherView.isHidden = false
+                self.viewModel.upsertResult(input: self.searchBar.text ?? "")
                 self.weatherView.setModel(model: model)
+                self.weatherView.isHidden = false
             case .failure(let err):
+                self.weatherView.isHidden = true
                 switch err {
                 case .inputError(let type):
                     switch type {
@@ -134,46 +185,79 @@ class WeatherViewController: UIViewController {
                     self.view.makeToast("Unknown error occurs")
                 }
             }
-            }).disposed(by: disposedBag)
+        }).disposed(by: disposedBag)
 
-        searchBar.rx.text.orEmpty.asObservable().flatMapLatest { [unowned self] (text) -> Observable<Void> in
-            self.weatherView.isHidden = true
-            return self.viewModel.findResult(input: text)
-        }.subscribeOn(MainScheduler.instance).subscribe(onNext: {  [unowned self] (_) in
-            self.tableview.reloadData()
-            }).disposed(by: disposedBag)
+        searchBar.rx.text.orEmpty.asObservable().flatMapLatest { [unowned self] (text) -> Observable<Int> in
+            if let text = self.searchBar.text, text.isEmpty {
+                return Observable<Int>.just(0)
+            } else {
+                return self.viewModel.findResults(input: text)
+            }
+        }.subscribeOn(MainScheduler.instance).subscribe(onNext: {  [unowned self] (count) in
+            if count == 0 {
+                self.tableview.isHidden = true
+            } else {
+                self.tableview.isHidden = false
+                self.tableview.reloadData()
+            }
+        }).disposed(by: disposedBag)
+    }
+
+    func loadMostRecent() {
+        viewModel.findMostResult().subscribeOn(MainScheduler.instance).subscribe(onNext: { [unowned self] (model) in
+            if model == nil {
+                self.view.makeToast("No recent search")
+            } else {
+                self.searchRecent(input: model?.result ?? "", canEmpty: false)
+            }
+        }).disposed(by: disposedBag)
+    }
+    
+    func searchRecent(input: String, canEmpty: Bool = true) {
+        self.searchBar.text = input
+        if canEmpty {
+            self.searchButton.sendActions(for: .touchUpInside)
+        } else {
+            if !input.isEmpty {
+                self.searchButton.sendActions(for: .touchUpInside)
+            }
+        }
+    }
+
+    func setupLocation() {
+        LocationManager.shared.startPositioning()
+
+        Observable.combineLatest(LocationManager.shared.locationSignal, gpsTriggerSignal).subscribeOn(MainScheduler.instance).subscribe(onNext: { (signal) in
+            self.currentGPS = signal.0.1
+            self.searchBar.text = signal.0.0
+            self.searchRecent(input: signal.0.0)
+        }).disposed(by: disposedBag)
     }
 }
 
-
 extension WeatherViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return viewModel.resultArr.count
+        return viewModel.filterArr.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
-        cell.textLabel?.text = viewModel.resultArr[indexPath.row].result
+        cell.textLabel?.text = viewModel.filterArr[indexPath.row].result
+        cell.selectionStyle = .none
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let input = viewModel.resultArr[indexPath.row].result
-        searchBar.text = input
-        searchButton.sendActions(for: .touchUpInside)
+        searchRecent(input: viewModel.filterArr[indexPath.row].result ?? "")
     }
 
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        return true
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return "Recent match results"
     }
 
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            let model = viewModel.resultArr[indexPath.row]
-            viewModel.resultArr.remove(at: indexPath.row)
-            viewModel.deleteResult(model: model)
-            tableView.deleteRows(at: [indexPath], with: .fade)
-            tableView.setEditing(false, animated: true)
-        }
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 30
     }
+
+
 }
