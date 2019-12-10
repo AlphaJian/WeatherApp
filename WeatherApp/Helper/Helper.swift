@@ -14,7 +14,7 @@ extension String {
     }
 
     var isAlphabetic: Bool {
-        return !isEmpty && range(of: "[^a-zA-Z]", options: .regularExpression) == nil
+        return !isEmpty && range(of: "[^a-zA-Z ]", options: .regularExpression) == nil
     }
 
     var isNumberWithPoint: Bool {

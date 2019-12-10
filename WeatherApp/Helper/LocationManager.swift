@@ -15,7 +15,7 @@ class LocationManager: NSObject {
 
     private var locationManager: CLLocationManager?
 
-    public var locationSignal = PublishSubject<String>()
+    public var locationSignal = PublishSubject<(String, Coordinate)>()
 
     func startPositioning() {
 
@@ -90,7 +90,7 @@ extension LocationManager: CLLocationManagerDelegate {
             }
 
             if let place = placemarks?[0], let city = place.locality, !city.isEmpty {
-                self?.locationSignal.onNext(city)
+                self?.locationSignal.onNext((city, Coordinate(latitude: location.coordinate.latitude, lontitude: location.coordinate.longitude)))
             }
         }
     }

@@ -11,7 +11,7 @@ import UIKit
 class RecentViewController: BaseViewController {
 
     private var viewModel: WeatherViewModel!
-
+    
     public var weatherBlock: ((WeatherResult) -> ())?
     
     private lazy var tableview: UITableView = {
@@ -34,7 +34,6 @@ class RecentViewController: BaseViewController {
             make.edges.equalToSuperview()
         }
     }
-
 }
 
 extension RecentViewController: UITableViewDelegate, UITableViewDataSource {
@@ -46,6 +45,11 @@ extension RecentViewController: UITableViewDelegate, UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: "UITableViewCell", for: indexPath)
         cell.textLabel?.text = viewModel.resultArr[indexPath.row].result
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        weatherBlock?(viewModel.resultArr[indexPath.row])
+        self.navigationController?.popViewController(animated: true)
     }
 
     func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
@@ -62,7 +66,3 @@ extension RecentViewController: UITableViewDelegate, UITableViewDataSource {
         }
     }
 }
-//
-//extension RecentViewController: UINavigationControllerDelegate {
-//    func navigationshould
-//}

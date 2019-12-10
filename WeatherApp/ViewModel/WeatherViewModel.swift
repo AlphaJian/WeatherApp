@@ -12,6 +12,7 @@ import RxSwift
 enum InputType {
     case city(String)
     case zipcode(UInt)
+    case gps(String, String)
     case empty
     case unkown
 }
@@ -54,8 +55,12 @@ class WeatherViewModel: NSObject {
             weatherSearch = input
             return Observable<InputType>.just(.zipcode(code))
         } else if input.isAlphabetic {
+            weatherSearch = (input as NSString).replacingOccurrences(of: " ", with: "%20")
+            return Observable<InputType>.just(.city(weatherSearch ?? ""))
+        } else if input.isGPS {
+            let arr = input.components(separatedBy: ",")
             weatherSearch = input
-            return Observable<InputType>.just(.city(input))
+            return Observable<InputType>.just(.gps(arr[0], arr[1]))
         } else {
             return Observable<InputType>.just(.unkown)
         }
@@ -67,6 +72,8 @@ class WeatherViewModel: NSObject {
             return Business.reqeustWeaherByCity(cityName: city).map { Result.success($0) }
         case .zipcode(let code):
             return Business.reqeustWeaherByZipCode(zipCode: code).map { Result.success($0) }
+        case .gps(let lat, let lon):
+                return Business.reqeustWeaherByGPS(lat: lat, lon: lon).map { Result.success($0) }
         case .empty:
             return Observable<Result<Data, ErrorInfo>>.just(.failure(.inputError(.empty)))
         default:
@@ -126,7 +133,7 @@ class WeatherViewModel: NSObject {
 
     func findAllResult() {
         resultArr.removeAll()
-        let results = dbManager.loadMatch(table: tableName, match: "result like '%%'", value: [""])
+        let results = dbManager.loadMatch(table: tableName, match: "1=1", value: [])
         resultArr =  results.compactMap { WeatherResult(resultId: $0["resultid"] as! String, result: $0["result"] as? String, count: $0["count"] as? Int) }
     }
 
@@ -137,6 +144,10 @@ class WeatherViewModel: NSObject {
         } else {
             return Observable<WeatherResult?>.just(WeatherResult(resultId: results[0]["resultid"] as! String, result: results[0]["result"] as? String, count: results[0]["count"] as? Int) )
         }
+    }
+    
+    func deleteAllResult() {
+        dbManager.deleteAll(table: tableName)
     }
 }
 

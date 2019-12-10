@@ -11,9 +11,6 @@ import UIKit
 struct WeatherModel: Codable {
     var wId: UInt
     var name: String?
-    var zipCode: String?
-    var searchedLat: String?
-    var searchedLon: String?
     var coordinate: Coordinate?
     var mainData: MainData?
 
@@ -22,15 +19,12 @@ struct WeatherModel: Codable {
         case name
         case coordinate = "coord"
         case mainData = "main"
-        case zipCode
-        case searchedLat
-        case searchedLon
     }
 }
 
 struct Coordinate: Codable {
-    var latitude: Float?
-    var lontitude: Float?
+    var latitude: Double?
+    var lontitude: Double?
 
     private enum CodingKeys: String, CodingKey {
         case latitude = "lat"

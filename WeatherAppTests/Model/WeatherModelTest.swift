@@ -6,6 +6,7 @@
 //  Copyright © 2019 ken.zhang. All rights reserved.
 //
 
+@testable import WeatherApp
 import XCTest
 
 func dataWithJson(_ name: String) -> Data {
@@ -28,7 +29,17 @@ class WeatherModelTest: XCTestCase {
     }
 
     func test() {
-        
+        if let model = try? JSONDecoder().decode(WeatherModel.self, from: data) {
+            XCTAssertEqual(model.wId, 0)
+            XCTAssertEqual(model.name!, "Mountain View")
+            XCTAssertEqual(model.coordinate?.latitude!, 37.39)
+            XCTAssertEqual(model.coordinate?.lontitude!, -122.09)
+            XCTAssertEqual(model.mainData?.temperature, 284.12)
+            XCTAssertEqual(model.mainData?.tempMax, 285.37)
+            XCTAssertEqual(model.mainData?.tempMin, 282.59)
+            XCTAssertEqual(model.mainData?.humidity, 100)
+            XCTAssertEqual(model.mainData?.pressure, 1021)
+        }
     }
 
 

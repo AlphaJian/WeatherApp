@@ -1,4 +1,4 @@
-# Podfile
+# Pod-file
 source 'https://github.com/CocoaPods/Specs.git'  
 platform :ios, "10.0"
 use_frameworks!  
@@ -10,4 +10,10 @@ target ‘WeatherApp’ do
     pod 'SnapKit',    '~> 4.0.0'
     pod 'FMDB'
     pod 'Toast-Swift', '~> 5.0.0'
+end
+
+target 'WeatherAppTests' do 
+    pod 'RxSwift',    '~> 5.0.0'
+    pod 'RxCocoa',    '~> 5.0.0'
+    pod 'FMDB'
 end

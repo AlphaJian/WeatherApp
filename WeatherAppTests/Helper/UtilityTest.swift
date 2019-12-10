@@ -25,6 +25,11 @@ class UtilityTest: XCTestCase {
 
         XCTAssertTrue("london".isAlphabetic)
         XCTAssertTrue("London".isAlphabetic)
+        XCTAssertTrue("Hong Kong".isAlphabetic)
+        XCTAssertFalse("Hong.Kong".isAlphabetic)
+        XCTAssertFalse("Hong,Kong".isAlphabetic)
+        XCTAssertFalse("Hong;Kong".isAlphabetic)
+
         XCTAssertFalse("London1".isAlphabetic)
         XCTAssertFalse("123123".isAlphabetic)
 
