@@ -124,11 +124,11 @@ class WeatherViewModel: NSObject {
         }
     }
 
-    func findResults(input: String) -> Observable<Void> {
+    func findResults(input: String) -> Observable<Int> {
         filterArr.removeAll()
         let results = dbManager.loadMatch(table: tableName, match: "result like '%\(input)%'", value: [input])
         filterArr = results.compactMap { WeatherResult(resultId: $0["resultid"] as! String, result: $0["result"] as? String, count: $0["count"] as? Int) }
-        return Observable<Void>.just(())
+        return Observable<Int>.just(filterArr.count)
     }
 
     func findAllResult() {

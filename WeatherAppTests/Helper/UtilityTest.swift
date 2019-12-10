@@ -42,7 +42,21 @@ class UtilityTest: XCTestCase {
         XCTAssertTrue("123.23,-2324.33".isGPS)
         XCTAssertTrue("0,0".isGPS)
         XCTAssertFalse("123.23;-2324.33".isGPS)
+    }
 
+    func testTemperature() {
+        var temp: Double = 255.0
+
+        XCTAssertEqual(temp.celsius, -18.15)
+        XCTAssertEqual(temp.fahrenheit, -0.67)
+        XCTAssertEqual(temp.celsiusStr, "-18.15 ℃")
+        XCTAssertEqual(temp.fahrenheitStr, "-0.67 ℉")
+
+        temp = 300
+        XCTAssertEqual(temp.celsius, 26.85)
+        XCTAssertEqual(temp.fahrenheit, 80.33)
+        XCTAssertEqual(temp.celsiusStr, "26.85 ℃")
+        XCTAssertEqual(temp.fahrenheitStr, "80.33 ℉")
     }
 
 }

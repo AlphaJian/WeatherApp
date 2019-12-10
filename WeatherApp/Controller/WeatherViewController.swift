@@ -80,19 +80,11 @@ class WeatherViewController: BaseViewController {
     }
 
     func setupUI() {
-        view.addSubview(gpsButton)
-        gpsButton.snp.makeConstraints { (make) in
-            make.top.equalToSuperview().offset(100)
-            make.trailing.equalToSuperview().offset(-padding)
-            make.width.equalTo(150)
-            make.height.equalTo(25)
-        }
-
         view.addSubview(tipLabel)
         tipLabel.snp.makeConstraints { (make) in
             make.top.equalToSuperview().offset(100)
             make.leading.equalToSuperview().offset(padding)
-            make.trailing.equalTo(gpsButton).offset(-padding)
+            make.trailing.equalToSuperview().offset(-padding)
             make.height.equalTo(25)
         }
 
@@ -100,7 +92,7 @@ class WeatherViewController: BaseViewController {
         recentButton.snp.makeConstraints { (make) in
             make.bottom.equalToSuperview().offset(-padding)
             make.leading.equalToSuperview().offset(padding)
-            make.trailing.equalTo(gpsButton).offset(-padding)
+            make.trailing.equalToSuperview().offset(-padding)
             make.height.equalTo(25)
         }
 
@@ -120,10 +112,16 @@ class WeatherViewController: BaseViewController {
             make.height.equalTo(30)
         }
 
+        view.addSubview(gpsButton)
+        gpsButton.snp.makeConstraints { (make) in
+            make.top.equalTo(searchBar.snp.bottom).offset(padding)
+            make.centerX.equalToSuperview()
+        }
+
         view.addSubview(tableview)
         tableview.snp.makeConstraints { (make) in
             make.leading.trailing.equalToSuperview()
-            make.top.equalTo(searchBar.snp.bottom).offset(5)
+            make.top.equalTo(gpsButton.snp.bottom).offset(5)
             make.bottom.equalTo(recentButton.snp.top).offset(-padding)
         }
         
@@ -163,9 +161,12 @@ class WeatherViewController: BaseViewController {
             self.view.hideToastActivity()
             switch result {
             case .success(let model):
-                print(model)
                 self.viewModel.upsertResult(input: self.searchBar.text ?? "")
+                self.weatherView.setModel(model: model)
+                self.weatherView.isHidden = false
+                self.searchBar.resignFirstResponder()
             case .failure(let err):
+                self.weatherView.isHidden = true
                 switch err {
                 case .inputError(let type):
                     switch type {
@@ -186,16 +187,29 @@ class WeatherViewController: BaseViewController {
             }
         }).disposed(by: disposedBag)
 
-        searchBar.rx.text.orEmpty.asObservable().flatMapLatest { [unowned self] (text) -> Observable<Void> in
-            return self.viewModel.findResults(input: text)
-        }.subscribeOn(MainScheduler.instance).subscribe(onNext: {  [unowned self] (_) in
-            self.tableview.reloadData()
+        searchBar.rx.text.orEmpty.asObservable().flatMapLatest { [unowned self] (text) -> Observable<Int> in
+            if let text = self.searchBar.text, text.isEmpty {
+                return Observable<Int>.just(0)
+            } else {
+                return self.viewModel.findResults(input: text)
+            }
+        }.subscribeOn(MainScheduler.instance).subscribe(onNext: {  [unowned self] (count) in
+            if count == 0 {
+                self.tableview.isHidden = true
+            } else {
+                self.tableview.isHidden = false
+                self.tableview.reloadData()
+            }
         }).disposed(by: disposedBag)
     }
 
     func loadMostRecent() {
-        viewModel.findMostResult().subscribe(onNext: { [unowned self] (model) in
-            self.searchRecent(input: model?.result ?? "", canEmpty: false)
+        viewModel.findMostResult().subscribeOn(MainScheduler.instance).subscribe(onNext: { [unowned self] (model) in
+            if model == nil {
+                self.view.makeToast("No recent search")
+            } else {
+                self.searchRecent(input: model?.result ?? "", canEmpty: false)
+            }
         }).disposed(by: disposedBag)
     }
     
@@ -212,7 +226,8 @@ class WeatherViewController: BaseViewController {
 
     func setupLocation() {
         LocationManager.shared.startPositioning()
-        Observable.zip(LocationManager.shared.locationSignal, gpsTriggerSignal).subscribeOn(MainScheduler.instance).subscribe(onNext: { (signal) in
+
+        Observable.combineLatest(LocationManager.shared.locationSignal, gpsTriggerSignal).subscribeOn(MainScheduler.instance).subscribe(onNext: { (signal) in
             self.currentGPS = signal.0.1
             self.searchBar.text = signal.0.0
             self.searchRecent(input: signal.0.0)
@@ -235,4 +250,14 @@ extension WeatherViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         searchRecent(input: viewModel.filterArr[indexPath.row].result ?? "")
     }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return "Recent match results"
+    }
+
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 30
+    }
+
+
 }

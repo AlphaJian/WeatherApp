@@ -35,9 +35,9 @@ struct Coordinate: Codable {
 struct MainData: Codable {
     var humidity: Float?
     var pressure: Float?
-    var temperature: Float?
-    var tempMax: Float?
-    var tempMin: Float?
+    var temperature: Double?
+    var tempMax: Double?
+    var tempMin: Double?
 
     private enum CodingKeys: String, CodingKey {
         case humidity

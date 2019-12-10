@@ -65,3 +65,29 @@ extension UIApplication {
         }
     }
 }
+
+extension Double {
+
+    /// Rounds the double to decimal places value
+    func roundTo(places:Int) -> Double {
+        let divisor = pow(10.0, Double(places))
+        return (self * divisor).rounded() / divisor
+    }
+
+    var celsius: Double {
+        return (self - 273.15).roundTo(places: 2)
+    }
+
+    var fahrenheit: Double {
+        let newValue = self.celsius * 9 / 5 + 32
+        return newValue.roundTo(places: 2)
+    }
+
+    var celsiusStr: String {
+        return "\(self.celsius) ℃"
+    }
+
+    var fahrenheitStr: String {
+        return "\(self.fahrenheit) ℉"
+    }
+}
