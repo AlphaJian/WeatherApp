@@ -147,6 +147,7 @@ class WeatherViewController: BaseViewController {
 
         searchButton.rx.tap.flatMap { [unowned self] (_) -> Observable<InputType> in
             self.view.makeToastActivity(.center)
+            self.searchBar.resignFirstResponder()
             if let gps = self.currentGPS {
                 self.currentGPS = nil
                 return self.viewModel.judgeInputType(input: "\(gps.latitude ?? 0),\(gps.lontitude ?? 0)")
@@ -164,7 +165,6 @@ class WeatherViewController: BaseViewController {
                 self.viewModel.upsertResult(input: self.searchBar.text ?? "")
                 self.weatherView.setModel(model: model)
                 self.weatherView.isHidden = false
-                self.searchBar.resignFirstResponder()
             case .failure(let err):
                 self.weatherView.isHidden = true
                 switch err {
